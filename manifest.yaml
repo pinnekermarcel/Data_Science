@@ -1,0 +1,30 @@
+# Read by check_submission.py -- keep the keys as they are.
+# Format: HANDIN.pdf §5. The numbers: the box at the end of M1_sheet.pdf.
+group: G00                      # your group id from the group mail (BSED: B01, ...)
+slice_id: S00                   # your slice id from the group mail
+milestone: M1
+submitted_by: 000000            # matrikel of whoever uploads
+
+# One entry per member; responsible_for in your own words -- the oral asks about it.
+members:
+  - name: <first last>
+    responsible_for: <what you actually did>
+  - name: <first last>
+    responsible_for: <what you actually did>
+  - name: <first last>
+    responsible_for: <what you actually did>
+  - name: <first last>
+    responsible_for: <what you actually did>
+
+# Copied from your own output, not retyped. lines/orders/customers: analysis.py prints them.
+findings:
+  lines: 0
+  orders: 0
+  customers: 0
+  linetotal_median: 0
+  mean_over_median: 0
+  iqr_outliers_lines: 0
+  iqr_outliers_orders: 0
+  lines_online: 0
+  lines_reseller: 0
+  months_covered: 0

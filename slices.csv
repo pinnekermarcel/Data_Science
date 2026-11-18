@@ -1,0 +1,29 @@
+slice_id,TerritoryName,Category,lines,orders,customers,products,revenue,pool,ref_cutoff,ref_unit
+S01,Australia,Accessories,7178,3709,2918,22,162638.16,main,8,customer
+S02,Australia,Bikes,5241,4575,2186,88,10175870.74,main,31,customer
+S03,Australia,Clothing,2152,1616,1455,20,113175.75,main,7,customer
+S04,Canada,Accessories,6392,2852,1285,24,221505.2,main,31,customer
+S05,Canada,Bikes,5366,1507,756,97,13457682.98,main,28,customer
+S06,Canada,Clothing,3872,1528,796,34,432112.25,main,32,customer
+S07,France,Accessories,3668,1755,1526,24,111438.51,main,18,customer
+S08,France,Bikes,2618,1600,847,90,6114241.36,main,31,customer
+S09,France,Clothing,1577,779,650,32,155127.44,main,18,customer
+S10,Germany,Accessories,3519,1714,1552,23,97330.66,main,7,customer
+S11,Germany,Bikes,2255,1701,934,88,4382176.51,main,30,customer
+S12,Germany,Clothing,1206,741,658,28,98113.92,main,6,customer
+S13,Northwest,Accessories,6176,2976,2722,24,163069.77,main,32,customer
+S14,Northwest,Bikes,5187,2340,1451,97,13882022.98,main,30,customer
+S15,Northwest,Clothing,2873,1480,1211,34,256254.57,main,30,customer
+S16,Southwest,Accessories,8386,3991,3624,24,253819.85,main,32,customer
+S17,Southwest,Bikes,8605,3649,2299,97,20803673.94,main,29,customer
+S18,Southwest,Clothing,4455,2030,1597,34,434914.62,main,30,customer
+S19,United Kingdom,Accessories,4392,2119,1700,24,119223.07,main,18,customer
+S20,United Kingdom,Bikes,3185,2006,1063,92,6688589.87,main,30,customer
+S21,United Kingdom,Clothing,1750,966,802,32,151068.31,main,18,customer
+S22,Australia,Components,487,85,33,57,203651.31,reserve,6,product
+S23,Canada,Components,3434,474,97,107,2244470.02,reserve,30,customer
+S24,France,Components,1225,134,33,101,870748.34,reserve,17,product
+S25,Germany,Components,548,97,30,80,337786.52,reserve,6,product
+S26,Northwest,Components,2629,359,80,108,1783595.23,reserve,29,customer
+S27,Southwest,Components,4198,553,104,107,2692201.2,reserve,30,customer
+S28,United Kingdom,Components,1099,130,35,106,711839.79,reserve,18,product

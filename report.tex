@@ -1,0 +1,111 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=22mm]{geometry}
+\usepackage{booktabs,array,graphicx,xcolor,microtype}
+\usepackage[colorlinks=true,linkcolor=black,urlcolor=blue]{hyperref}
+\usepackage{enumitem}
+\setlist{nosep,leftmargin=*}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf,skip=3pt}
+\definecolor{hl}{HTML}{EB6834}
+\newcommand{\dec}[1]{\textbf{\textcolor{hl}{#1}}}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.4ex}
+
+\begin{document}
+\begingroup\centering
+{{\Large\bfseries Data quality: what is wrong with your slice}}\\[0.3ex]
+{{\small Group G01 $\cdot$ slice S08 (France / Bikes) $\cdot$ M1}}\\
+\endgroup
+\vspace{1ex}\hrule\vspace{1.2ex}
+
+\section*{1. The extract}
+\begin{table}[h!]
+\centering
+\begin{tabular}{ll}
+\toprule
+\textbf{Parameter} & \textbf{Value} \\
+\midrule
+Filter & \texttt{TerritoryName = 'France'} AND \texttt{Category = 'Bikes'} \\
+Lines (Order Line Items) & 2,618 \\
+Orders (Distinct SalesOrderID) & 1,600 \\
+Period & \texttt{[HIER START- BIS ENDDATUM EINTRAGEN]} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Joins:} The flat extract starts from \texttt{Sales\_SalesOrderDetail} (\texttt{d}) as the primary fact grain, using inner joins to \texttt{Sales\_SalesOrderHeader} (\texttt{h}) and \texttt{Production\_Product} (\texttt{p}), followed by left joins to \texttt{Production\_ProductSubcategory} (\texttt{sc}), \texttt{Production\_ProductCategory} (\texttt{c}), and \texttt{Sales\_SalesTerritory} (\texttt{t}) to preserve all line items even if optional hierarchy metadata is missing.
+
+\section*{2. Your observation, your question, your target number}
+\textbf{Observation:} Within the French bicycle segment, order values exhibit strong right-skewness driven by high-volume reseller bulk purchases alongside regular individual online orders. \\
+\textbf{Question:} How strongly do B2B wholesale bulk orders distort average transaction metrics compared to typical unit pricing in the France/Bikes slice, and how should anomalous zero-price entries be handled without corrupting historical pricing integrity? \\
+\textbf{Target Number:} \textbf{2,071.42~EUR} (raw median of \texttt{LineTotal} across all 2,618 order lines, chosen over the mean of 2,335.46~EUR due to heavy upper-tail skewness).
+
+\section*{3. Profile}
+The full column-by-column profile is provided in \texttt{profile.csv}. Key findings across the slice:
+\begin{itemize}
+    \item \textbf{Grain:} One row corresponds to a single order line item, uniquely identified by \texttt{SalesOrderDetailID} (2,618 unique IDs across 2,618 rows; 1,600 distinct \texttt{SalesOrderID}s).
+    \item \textbf{Missingness:} \texttt{SalesPersonID} is missing (\texttt{NULL}) in 1,444 rows (55.16\%), classified as Missing At Random (MAR) because direct online B2C web orders (\texttt{OnlineOrderFlag = 1}) do not assign a sales representative.
+    \item \textbf{Pricing Anomalies:} \texttt{UnitPrice} contains 3 records with an exact value of \texttt{0.00~EUR}.
+\end{itemize}
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{llll}
+\toprule
+\textbf{Column} & \textbf{Placeholder Checked} & \textbf{Hidden Missing Count} & \textbf{Finding} \\
+\midrule
+\texttt{SalesPersonID} & \texttt{-1}, \texttt{0}, \texttt{'N/A'} & 0 & Only explicit SQL \texttt{NULL}s (1,444 rows) \\
+\texttt{UnitPrice} & \texttt{0}, \texttt{-1} & 3 & 3 rows with \texttt{UnitPrice = 0} (flagged for quarantine) \\
+\texttt{OrderDate} / \texttt{ShipDate} & \texttt{'1900-01-01'}, \texttt{'2099-12-31'} & 0 & All timestamps within valid operational range \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section*{4. Outliers and who is absent}
+\begin{table}[h!]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Grain} & \textbf{Count} & \textbf{Upper Fence (1.5$\times$IQR)} & \textbf{Outliers (Above)} & \textbf{Outliers (Below)} & \textbf{Outlier Revenue Share} \\
+\midrule
+Lines (\texttt{LineTotal}) & 2,618 & 4,737.91~EUR & 204 & 0 & 27.53\% \\
+Orders (\texttt{SalesOrderID}) & 1,600 & 4,785.69~EUR & 114 & 0 & 56.97\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Largest Orders:} The top three aggregated orders are ID \texttt{46981} (117,880.15~EUR), ID \texttt{57150} (114,404.31~EUR), and ID \texttt{63284} (105,928.81~EUR). All three are \dec{real} B2B reseller bulk orders rather than data errors, verified by multi-unit line quantities (\texttt{OrderQty} between 15 and 19 per model), standard list prices, and offline reseller flags (\texttt{OnlineOrderFlag = 0}).
+
+\textbf{Absent Groups:} (1) \emph{Other product categories} (Accessories, Clothing, Components) are absent, preventing analysis of cross-selling attachment rates alongside bike purchases. (2) \emph{Other geographic territories} (e.g., Germany, USA) are absent, making international price-sensitivity comparisons impossible from this slice.
+
+\section*{5. The cleaning log}
+\begin{table}[h!]
+\centering
+\small
+\begin{tabular}{p{0.5cm}p{2.5cm}p{2.8cm}p{2.3cm}p{2.8cm}p{2.2cm}p{1.3cm}}
+\toprule
+\textbf{id} & \textbf{problem} & \textbf{action} & \textbf{rejected alt.} & \textbf{why} & \textbf{effect on target} & \textbf{status} \\
+\midrule
+P1 & \texttt{UnitPrice} = 0 in 3 rows (\texttt{SalesOrderDetail}) & \dec{quarantine}: Move rows where \texttt{UnitPrice = 0} to \texttt{reject\_table}. & \emph{fix when reading}: Replace with \texttt{ListPrice}. & Auto-replacing falsifies historical discounts or promotional zero-price giveaways. & Removes 3 rows (2,618 $\rightarrow$ 2,615); no distortion of target median. & \texttt{applied} \\
+P2 & \texttt{SalesPersonID}: 1,444 missing (55.16\%) & \dec{annotate}: Keep \texttt{NULL}s; add boolean flag \texttt{HasSalesPerson}. & \emph{quarantine}: Drop rows with missing ID. & Missingness is structural (MAR) from online B2C orders; dropping destroys 55\% of data. & Removes 0 rows; preserves full 2,618 lines. & \texttt{applied} \\
+P3 & \texttt{LineTotal}: 204 upper outliers ($>$4,737.91~EUR) & \dec{quarantine}: Move outliers to \texttt{reject\_table}. & \emph{fix when reading}: Cap at upper fence. & Outliers are legitimate B2B reseller bulk orders; removing them erases 27.53\% of revenue. & Would drop 204 rows and 27.53\% revenue. & \texttt{rejected} \\
+P4 & \texttt{ShipDate}: Historical timestamp audit integrity & \dec{ask the owner}: Keep raw dates unchanged without edits. & \emph{annotate}: Flag potential processing delays. & Original timestamps must remain untouched because logistics auditors require raw records. & Removes 0 rows; original values preserved. & \texttt{unresolved} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section*{6. The decision that matters most}
+The most critical data cleaning decision in our slice concerns \textbf{P1}: the handling of the 3 order lines in \texttt{Sales\_SalesOrderDetail} where \texttt{UnitPrice} equals \texttt{0.00~EUR}. We evaluated two competing strategies before finalizing our pipeline.
+
+First, we tested the rejected alternative, \emph{fix when reading}, by imputing the missing prices with the standard \texttt{ListPrice} from \texttt{Production\_Product}. Under this approach, the row count remains unchanged at 2,618 lines, and the raw median \texttt{LineTotal} remains at 2,071.42~EUR (as 3 rows out of 2,618 do not shift the 50th percentile), while total slice revenue increases artificially by the sum of the three catalog list prices. However, we \dec{rejected} automatic imputation because overwriting transaction prices destroys historical fidelity. In an enterprise ERP system like AdventureWorks, a zero unit price can represent an intentional promotional giveaway, warranty replacement, or special B2B volume rebate. Fabricating revenue where none was billed introduces silent bias into financial reporting.
+
+Second, we executed our chosen action, \dec{quarantine}, isolating all rows with \texttt{UnitPrice == 0} into a separate \texttt{reject\_table}. This reduces the active analytical dataset from 2,618 to 2,615 rows (-0.11\%), while keeping the target median \texttt{LineTotal} stable at 2,071.42~EUR. We chose quarantine because strict separation of anomalous records protects downstream pricing models from zero-price distortion while preserving full auditability for business owners to inspect the quarantined rows later.
+
+\section*{7. Metadata and personal data}
+Full dataset documentation, the 10-column data dictionary, known issues, and FAIR scores are stored in \texttt{awc\_flat.metadata.yaml}.
+
+\textbf{Personal Data \& Identifiability:} While the flat extract omits direct names and addresses, it still contains indirect personal data under GDPR principles. Specifically, combining \texttt{CustomerID} with \texttt{OrderDate}, exact \texttt{LineTotal} amounts, and \texttt{TerritoryName} acts as a quasi-identifier capable of re-identifying individual B2C buyers when linked to payment or shipping logs. To enforce $k$-anonymity before sharing, we would first \dec{coarsen} \texttt{OrderDate} from exact days to year-month granularity and pseudonymize or bin \texttt{CustomerID} into customer segments.
+
+\end{document}
